@@ -336,7 +336,7 @@ def main(argv):
     job_id = 1 if len(argv) < 3 else argv[-1]
 
     # Training setup
-    train_splits, val_splits, test_splits = 4, 4, 3
+    train_splits, val_splits, test_splits = None, None, None
 
     if params['mode'] == 'dev':
         if '2020' in params['dataset_dir']:

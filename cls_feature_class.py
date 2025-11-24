@@ -90,8 +90,8 @@ class FeatureClass:
             self._nb_mel_bins = params['nb_mel_bins']
             self._mel_wts = librosa.filters.mel(sr=self._fs, n_fft=self._nfft, n_mels=self._nb_mel_bins).T
         # Sound event classes dictionary
-        # self._nb_unique_classes = params['unique_classes']
-        self._nb_unique_classes = 13
+        self._nb_unique_classes = params['unique_classes']
+        # self._nb_unique_classes = 13
 
         self._filewise_frames = {}
 
