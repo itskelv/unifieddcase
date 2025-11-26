@@ -20,7 +20,7 @@ def get_params(argv='1'):
         unified_dataset = True,
         audio_formats = ['foa', 'stereo'],  # Formats to train on
 
-        dataset_dirs = '../Unified_dataset_2024_2025/',
+        dataset_dir = '../Unified_dataset_2024_2025/',
 
         # OUTPUT PATHS
         # feat_label_dir='DCASE2020_SELD_dataset/feat_label_hnet/',  # Directory to dump extracted features and labels
