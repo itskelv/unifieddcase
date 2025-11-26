@@ -142,15 +142,32 @@ class FeatureClass:
         print('Computing frame stats:')
         print('\t\taud_dir {}\n\t\tdesc_dir {}\n\t\tfeat_dir {}'.format(
             self._aud_dir, self._desc_dir, self._feat_dir))
-        for sub_folder in os.listdir(self._aud_dir):
-            loc_aud_folder = os.path.join(self._aud_dir, sub_folder)
-            for file_cnt, file_name in enumerate(os.listdir(loc_aud_folder)):
-                wav_filename = '{}.wav'.format(file_name.split('.')[0])
-                with contextlib.closing(wave.open(os.path.join(loc_aud_folder, wav_filename), 'r')) as f:
-                    audio_len = f.getnframes()
-                nb_feat_frames = int(audio_len / float(self._hop_len))
-                nb_label_frames = int(audio_len / float(self._label_hop_len))
-                self._filewise_frames[file_name.split('.')[0]] = [nb_feat_frames, nb_label_frames]
+        for modality in ['foa', 'stereo']:
+            modality_path = os.path.join(self._aud_dir, modality)
+            
+            if not os.path.exists(modality_path):
+                continue
+                
+            for subfolder in os.listdir(modality_path):
+                subfolder_path = os.path.join(modality_path, subfolder)
+                
+                if not os.path.isdir(subfolder_path):
+                    continue
+                    
+                for file_name in os.listdir(subfolder_path):
+                    if file_name.endswith('.wav'):
+                        wav_path = os.path.join(subfolder_path, file_name)
+                        
+                        with contextlib.closing(wave.open(wav_path, 'r')) as f:
+                            audio_len = f.getnframes()
+                        
+                        nb_feat_frames = int(audio_len / float(self._hop_len))
+                        nb_label_frames = int(audio_len / float(self._label_hop_len))
+                        
+                        # Use the same naming convention as feature extraction
+                        base_name = file_name.replace('.wav', '')
+                        key = f"{modality}_{subfolder}_{base_name}"
+                        self._filewise_frames[key] = [nb_feat_frames, nb_label_frames]
         return
 
     def _load_audio(self, audio_path):
@@ -445,14 +462,34 @@ class FeatureClass:
         print('\t\taud_dir {}\n\t\tdesc_dir {}\n\t\tfeat_dir {}'.format(
             self._aud_dir, self._desc_dir, self._feat_dir))
         arg_list = []
-        for sub_folder in os.listdir(self._aud_dir):
-            loc_aud_folder = os.path.join(self._aud_dir, sub_folder)
-            for file_cnt, file_name in enumerate(os.listdir(loc_aud_folder)):
-                wav_filename = '{}.wav'.format(file_name.split('.')[0])
-                wav_path = os.path.join(loc_aud_folder, wav_filename)
-                feat_path = os.path.join(self._feat_dir, '{}.npy'.format(wav_filename.split('.')[0]))
-                self.extract_file_feature((file_cnt, wav_path, feat_path))
-                arg_list.append((file_cnt, wav_path, feat_path))
+        for modality in ['foa', 'stereo']:
+            modality_path = os.path.join(self._aud_dir, modality)
+            
+            if not os.path.exists(modality_path):
+                print(f"Warning: {modality_path} does not exist, skipping")
+                continue
+                
+            print(f"Processing {modality} files in: {modality_path}")
+            
+            # Iterate through subfolders (dev-train-tau, dev-train-sony, etc.)
+            for subfolder in os.listdir(modality_path):
+                subfolder_path = os.path.join(modality_path, subfolder)
+                
+                if not os.path.isdir(subfolder_path):
+                    continue
+                    
+                print(f"  Processing subfolder: {subfolder}")
+                
+                # Process all WAV files in this subfolder
+                for file_cnt, file_name in enumerate(os.listdir(subfolder_path)):
+                    if file_name.endswith('.wav'):
+                        wav_path = os.path.join(subfolder_path, file_name)
+                        # Create unique feature filename with modality and subfolder info
+                        base_name = file_name.replace('.wav', '')
+                        feat_filename = f"{modality}_{subfolder}_{base_name}.npy"
+                        feat_path = os.path.join(self._feat_dir, feat_filename)
+                        
+                        arg_list.append((file_cnt, wav_path, feat_path))
 #        with Pool() as pool:
 #            result = pool.map(self.extract_file_feature, iterable=arg_list)
 #            pool.close()
@@ -511,19 +548,44 @@ class FeatureClass:
         print('\t\taud_dir {}\n\t\tdesc_dir {}\n\t\tlabel_dir {}'.format(
             self._aud_dir, self._desc_dir, self._label_dir))
         create_folder(self._label_dir)
-        for sub_folder in os.listdir(self._desc_dir):
-            loc_desc_folder = os.path.join(self._desc_dir, sub_folder)
-            for file_cnt, file_name in enumerate(os.listdir(loc_desc_folder)):
-                wav_filename = '{}.wav'.format(file_name.split('.')[0])
-                nb_label_frames = self._filewise_frames[file_name.split('.')[0]][1]
-                desc_file_polar = self.load_output_format_file(os.path.join(loc_desc_folder, file_name))
-                desc_file = self.convert_output_format_polar_to_cartesian(desc_file_polar)
-                if self._multi_accdoa:
-                    label_mat = self.get_adpit_labels_for_file(desc_file, nb_label_frames)
-                else:
-                    label_mat = self.get_labels_for_file(desc_file, nb_label_frames)
-                print('{}: {}, {}'.format(file_cnt, file_name, label_mat.shape))
-                np.save(os.path.join(self._label_dir, '{}.npy'.format(wav_filename.split('.')[0])), label_mat)
+        for modality in ['foa', 'stereo']:
+            modality_path = os.path.join(self._desc_dir, modality)
+            
+            if not os.path.exists(modality_path):
+                continue
+                
+            for subfolder in os.listdir(modality_path):
+                subfolder_path = os.path.join(modality_path, subfolder)
+                
+                if not os.path.isdir(subfolder_path):
+                    continue
+                    
+                for file_cnt, file_name in enumerate(os.listdir(subfolder_path)):
+                    if file_name.endswith('.csv'):
+                        # Create the same key as used in frame stats
+                        base_name = file_name.replace('.csv', '')
+                        key = f"{modality}_{subfolder}_{base_name}"
+                        
+                        if key not in self._filewise_frames:
+                            print(f"Warning: No frame stats for {key}, skipping")
+                            continue
+                            
+                        nb_label_frames = self._filewise_frames[key][1]
+                        
+                        desc_file_path = os.path.join(subfolder_path, file_name)
+                        desc_file_polar = self.load_output_format_file(desc_file_path)
+                        desc_file = self.convert_output_format_polar_to_cartesian(desc_file_polar)
+                        
+                        if self._multi_accdoa:
+                            label_mat = self.get_adpit_labels_for_file(desc_file, nb_label_frames)
+                        else:
+                            label_mat = self.get_labels_for_file(desc_file, nb_label_frames)
+                        
+                        print(f'{file_cnt}: {file_name}, {label_mat.shape}')
+                        
+                        # Save with same naming convention
+                        label_filename = f"{modality}_{subfolder}_{base_name}.npy"
+                        np.save(os.path.join(self._label_dir, label_filename), label_mat)
 
     # ------------------------------- EXTRACT VISUAL FEATURES AND PREPROCESS IT -------------------------------
     @staticmethod
