@@ -9,4 +9,4 @@
 
 module load cuda/12.1
 conda activate unidcaseenv
-python3 train_seldnet.py 3
+python3 train_seldnet. 3
