@@ -490,13 +490,13 @@ class FeatureClass:
                         feat_path = os.path.join(self._feat_dir, feat_filename)
                         
                         arg_list.append((file_cnt, wav_path, feat_path))
-        # with Pool() as pool:
-        #     result = pool.map(self.extract_file_feature, iterable=arg_list)
-        #     pool.close()
-        #     pool.join()
-
         with Pool() as pool:
-            pool.map(self.extract_file_feature, arg_list)
+            result = pool.map(self.extract_file_feature, iterable=arg_list)
+            pool.close()
+            pool.join()
+
+        # with Pool() as pool:
+        #     pool.map(self.extract_file_feature, arg_list)
 
         print(time.time()-start_s)
 
