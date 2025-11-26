@@ -37,7 +37,7 @@ class FeatureClass:
         self._dataset_dir = params['dataset_dir']
         
         self._dataset_combination = 'dev' if not is_eval else 'eval'
-        self._aud_dir = os.path.join(self._dataset_dir, self._dataset_combination)
+        self._aud_dir = os.path.join(self._dataset_dir, self._dataset_combination, 'audio')
 
         # Metadata folder for dev split only
         self._desc_dir = None if is_eval else os.path.join(self._dataset_dir, self._dataset_combination, 'metadata')
