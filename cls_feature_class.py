@@ -124,7 +124,21 @@ class FeatureClass:
     def _next_greater_power_of_2(x):
         return 2 ** (x - 1).bit_length()
 
+    def _stereo_to_pseudo_foa(self, audio_input):
+        # Convert stereo audio to pseudo-FOA format
+        L = audio_input[:, 0]
+        R = audio_input[:, 1]
+        
+        # Convert to FOA B-format
+        W = (L + R) / np.sqrt(2)  # Omni
+        X = (L - R) / np.sqrt(2)  # Front-Back
+        Y = np.zeros_like(W)      # Left-Right (zero for stereo)
+        Z = np.zeros_like(W)      # Up-Down (zero for stereo)
+        return np.stack([W, X, Y, Z], axis=1)
+
     def _spectrogram(self, audio_input, _nb_frames):
+        if audio_input.shape[1] == 2 and self._dataset == 'stereo':
+            audio_input = self._stereo_to_pseudo_foa(audio_input)
         _nb_ch = audio_input.shape[1]
         nb_bins = self._nfft // 2
         spectra = []
