@@ -36,6 +36,11 @@ class DataGenerator(object):
         self._circ_buf_feat = None
         self._circ_buf_label = None
 
+        # Prepare both data types
+        self._audio_formats = ['foa', 'stereo']
+        self._feat_dirs = {}
+        self._label_dirs = {}
+
         self._modality = params['modality']
         if self._modality == 'audio_visual':
             self._vid_feature_seq_len = self._label_seq_len  # video feat also at 10 fps same as label resolutions (100ms)
@@ -43,6 +48,18 @@ class DataGenerator(object):
             self._circ_buf_vid_feat = None
 
         self._get_filenames_list_and_feat_label_sizes()
+
+        def _get_unified_filenames_list_and_feat_label_sizes(self):
+            #Combine file lists from both FOA and stereo datasets
+            self._filenames_list = []
+            self._file_audio_format = {}  # Track which format each file is
+            
+            for audio_format in self._audio_formats:
+                feat_dir = self._feat_dirs[audio_format]
+                for filename in os.listdir(feat_dir):
+                    if self._is_eval or self._should_include_file(filename, audio_format):
+                        self._filenames_list.append(filename)
+                        self._file_audio_format[filename] = audio_format
 
         print(
             '\tDatagen_mode: {}, nb_files: {}, nb_classes:{}\n'

@@ -15,7 +15,12 @@ def get_params(argv='1'):
 
         # INPUT PATH
         # dataset_dir='DCASE2020_SELD_dataset/',  # Base folder containing the foa/mic and metadata folders
-        dataset_dir='../DCASE_FOA_DATASET_2024/',
+
+        unified_training = True,  # Enable unified training
+        unified_dataset = True,
+        audio_formats = ['foa', 'stereo'],  # Formats to train on
+
+        dataset_dirs = '../Unified_dataset_2024_2025/',
 
         # OUTPUT PATHS
         # feat_label_dir='DCASE2020_SELD_dataset/feat_label_hnet/',  # Directory to dump extracted features and labels
@@ -85,10 +90,12 @@ def get_params(argv='1'):
         params['multi_accdoa'] = False
 
     elif argv == '3':
-        print("FOA + multi ACCDOA\n")
+        print("UNified FOA + multi ACCDOA\n")
         params['quick_test'] = False
         params['dataset'] = 'foa'
         params['multi_accdoa'] = True
+        params['unified_training'] = True
+        params['quick_test'] = False
 
     elif argv == '4':
         print("MIC + GCC + ACCDOA\n")

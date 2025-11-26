@@ -562,6 +562,22 @@ def main(argv):
 
         eval_epoch(data_gen_eval, model, dcase_output_test_folder, params, device)
 
+    if params['unified_training']:
+        # Create combined splits for both datasets
+        train_splits_combined = []
+        val_splits_combined = []
+        test_splits_combined = []
+        
+        for audio_format in params['audio_formats']:
+            # Get splits for each format and combine
+            format_params = params.copy()
+            format_params['dataset_dir'] = params['dataset_dirs'][audio_format]
+            
+            # Get splits for this format (you'll need to implement this)
+            format_train, format_val, format_test = get_format_splits(format_params, audio_format)
+            train_splits_combined.extend(format_train)
+            val_splits_combined.extend(format_val) 
+            test_splits_combined.extend(format_test)
 
 if __name__ == "__main__":
     try:

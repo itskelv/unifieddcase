@@ -68,6 +68,22 @@ class FeatureClass:
 
         self._multi_accdoa = params['multi_accdoa']
         self._use_salsalite = params['use_salsalite']
+
+        self._unified_dataset = params.get('unified_dataset', False)
+        
+        if self._unified_dataset:
+            # Unified dataset paths
+            self._aud_dir = os.path.join(self._dataset_dir, 'audio')
+            if not self._is_eval:
+                self._desc_dir = os.path.join(self._dataset_dir, 'metadata')
+            # For feature naming, use 'unified' instead of foa/mic
+            self._dataset_combination = 'unified_{}'.format('eval' if is_eval else 'dev')
+        else:
+            # Original DCASE paths
+            self._dataset_combination = '{}_{}'.format(params['dataset'], 'eval' if is_eval else 'dev')
+            self._aud_dir = os.path.join(self._dataset_dir, self._dataset_combination)
+            self._desc_dir = None if is_eval else os.path.join(self._dataset_dir, 'metadata_dev')
+            
         if self._use_salsalite and self._dataset=='mic':
             # Initialize the spatial feature constants
             self._lower_bin = np.int(np.floor(params['fmin_doa_salsalite'] * self._nfft / np.float(self._fs)))
@@ -95,6 +111,29 @@ class FeatureClass:
 
         self._filewise_frames = {}
 
+    def detect_audio_format(self, audio_path):
+        """Detect if audio is FOA (4ch) or stereo (2ch)"""
+        audio, fs = self._load_audio(audio_path)
+        if audio.shape[1] == 4:
+            return 'foa'
+        elif audio.shape[1] == 2:
+            return 'stereo'
+        else:
+            raise ValueError(f"Unsupported audio format with {audio.shape[1]} channels")
+    
+    def _stereo_to_pseudo_foa(self, audio_input):
+        """Convert stereo to pseudo-FOA format"""
+        L = audio_input[:, 0]
+        R = audio_input[:, 1]
+        
+        # Convert to FOA B-format
+        W = (L + R) / np.sqrt(2)  # Omni
+        X = (L - R) / np.sqrt(2)  # Front-Back  
+        Y = np.zeros_like(W)      # Left-Right
+        Z = np.zeros_like(W)      # Up-Down
+        
+        return np.stack([W, X, Y, Z], axis=1)
+    
     def get_frame_stats(self):
 
         if len(self._filewise_frames) != 0:
@@ -204,13 +243,15 @@ class FeatureClass:
 
     def _get_spectrogram_for_file(self, audio_filename):
         audio_in, fs = self._load_audio(audio_filename)
-
+        
+        # Detect format and convert for stereo
+        self._audio_format = 'foa' if audio_in.shape[1] == 4 else 'stereo'
+        if self._audio_format == 'stereo':
+            audio_in = self._stereo_to_pseudo_foa(audio_in)
+        
         nb_feat_frames = int(len(audio_in) / float(self._hop_len))
-        nb_label_frames = int(len(audio_in) / float(self._label_hop_len))
-        self._filewise_frames[os.path.basename(audio_filename).split('.')[0]] = [nb_feat_frames, nb_label_frames]
-
         audio_spec = self._spectrogram(audio_in, nb_feat_frames)
-        return audio_spec
+        return audio_spec, self._audio_format
 
     # OUTPUT LABELS
     def get_labels_for_file(self, _desc_file, _nb_label_frames):
