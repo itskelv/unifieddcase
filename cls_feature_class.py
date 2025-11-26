@@ -35,10 +35,13 @@ class FeatureClass:
         # Input directories
         self._feat_label_dir = params['feat_label_dir']
         self._dataset_dir = params['dataset_dir']
-        self._dataset_combination = '{}_{}'.format(params['dataset'], 'eval' if is_eval else 'dev')
+        
+        self._dataset_combination = 'dev' if not is_eval else 'eval'
         self._aud_dir = os.path.join(self._dataset_dir, self._dataset_combination)
 
-        self._desc_dir = None if is_eval else os.path.join(self._dataset_dir, 'dev', 'metadata')
+        # Metadata folder for dev split only
+        self._desc_dir = None if is_eval else os.path.join(self._dataset_dir, self._dataset_combination, 'metadata')
+
 
         self._vid_dir = os.path.join(self._dataset_dir, 'video_{}'.format('eval' if is_eval else 'dev'))
         # Output directories
@@ -132,7 +135,7 @@ class FeatureClass:
         if audio.ndim == 2:
             audio = self._stereo_to_pseudo_foa(audio)
         audio = audio[:, :self._nb_channels] / 32768.0 + self._eps
-        
+
         return audio, fs
 
     # INPUT FEATURES
@@ -401,17 +404,20 @@ class FeatureClass:
         from multiprocessing import Pool
         import time
         start_s = time.time()
+
         # extraction starts
         print('Extracting spectrogram:')
         print('\t\taud_dir {}\n\t\tdesc_dir {}\n\t\tfeat_dir {}'.format(
             self._aud_dir, self._desc_dir, self._feat_dir))
+        
         arg_list = []
+
         for sub_folder in os.listdir(self._aud_dir):
             loc_aud_folder = os.path.join(self._aud_dir, sub_folder)
             for file_cnt, file_name in enumerate(os.listdir(loc_aud_folder)):
                 wav_filename = '{}.wav'.format(file_name.split('.')[0])
                 wav_path = os.path.join(loc_aud_folder, wav_filename)
-                feat_path = os.path.join(self._feat_dir, '{}.npy'.format(wav_filename.split('.')[0]))
+                feat_path = os.path.join(self._feat_dir, f"{sub_folder}_{file_name.split('.')[0]}.npy")
                 self.extract_file_feature((file_cnt, wav_path, feat_path))
                 arg_list.append((file_cnt, wav_path, feat_path))
 #        with Pool() as pool:
@@ -475,7 +481,7 @@ class FeatureClass:
         for sub_folder in os.listdir(self._desc_dir):
             loc_desc_folder = os.path.join(self._desc_dir, sub_folder)
             for file_cnt, file_name in enumerate(os.listdir(loc_desc_folder)):
-                wav_filename = '{}.wav'.format(file_name.split('.')[0])
+                wav_filename = f"{file_name.split('.')[0]}.wav"
                 nb_label_frames = self._filewise_frames[file_name.split('.')[0]][1]
                 desc_file_polar = self.load_output_format_file(os.path.join(loc_desc_folder, file_name))
                 desc_file = self.convert_output_format_polar_to_cartesian(desc_file_polar)
@@ -484,7 +490,7 @@ class FeatureClass:
                 else:
                     label_mat = self.get_labels_for_file(desc_file, nb_label_frames)
                 print('{}: {}, {}'.format(file_cnt, file_name, label_mat.shape))
-                np.save(os.path.join(self._label_dir, '{}.npy'.format(wav_filename.split('.')[0])), label_mat)
+                np.save(os.path.join(self._label_dir, f"{wav_filename.split('.')[0]}.npy"), label_mat)
 
     # ------------------------------- EXTRACT VISUAL FEATURES AND PREPROCESS IT -------------------------------
     @staticmethod
