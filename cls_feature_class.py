@@ -73,9 +73,9 @@ class FeatureClass:
         
         if self._unified_dataset:
             # Unified dataset paths
-            self._aud_dir = os.path.join(self._dataset_dir, 'dev/audio')
+            self._aud_dir = os.path.join(self._dataset_dir, 'dev', 'audio')
             if not self._is_eval:
-                self._desc_dir = os.path.join(self._dataset_dir, 'dev/metadata')
+                self._desc_dir = os.path.join(self._dataset_dir, 'dev', 'metadata')
             # For feature naming, use 'unified' instead of foa/mic
             self._dataset_combination = 'unified_{}'.format('eval' if is_eval else 'dev')
         else:
