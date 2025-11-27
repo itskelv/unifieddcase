@@ -94,8 +94,8 @@ def get_params(argv='1'):
         params['quick_test'] = False
         params['dataset'] = 'foa'
         params['multi_accdoa'] = True
-        params['unified_training'] = True
-        params['quick_test'] = False
+        # params['unified_training'] = True
+        # params['quick_test'] = False
 
     elif argv == '4':
         print("MIC + GCC + ACCDOA\n")
