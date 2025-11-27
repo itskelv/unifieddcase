@@ -105,8 +105,8 @@ class FeatureClass:
         # Convert to FOA B-format
         W = (L + R) / np.sqrt(2)  # Omni
         X = (L - R) / np.sqrt(2)  # Front-Back  
-        Y = np.zeros_like(W)      # Left-Right
-        Z = np.zeros_like(W)      # Up-Down
+        Y = np.zeros_like(W)      # Left-Right = 0
+        Z = np.zeros_like(W)      # Up-Down = 0
         
         return np.stack([W, X, Y, Z], axis=1)
     
