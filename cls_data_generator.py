@@ -49,18 +49,6 @@ class DataGenerator(object):
 
         self._get_filenames_list_and_feat_label_sizes()
 
-        def _get_unified_filenames_list_and_feat_label_sizes(self):
-            #Combine file lists from both FOA and stereo datasets
-            self._filenames_list = []
-            self._file_audio_format = {}  # Track which format each file is
-            
-            for audio_format in self._audio_formats:
-                feat_dir = self._feat_dirs[audio_format]
-                for filename in os.listdir(feat_dir):
-                    if self._is_eval or self._should_include_file(filename, audio_format):
-                        self._filenames_list.append(filename)
-                        self._file_audio_format[filename] = audio_format
-
         print(
             '\tDatagen_mode: {}, nb_files: {}, nb_classes:{}\n'
             '\tnb_frames_file: {}, feat_len: {}, nb_ch: {}, label_len:{}\n'.format(
@@ -103,23 +91,38 @@ class DataGenerator(object):
     def _get_filenames_list_and_feat_label_sizes(self):
         print('Computing some stats about the dataset')
         max_frames, total_frames, temp_feat = -1, 0, []
+    
+        # Define mapping from subdirectory to split index
+        split_mapping = {
+            'dev-train-sony': 1,
+            'dev-train-tau': 2, 
+            'dev-test-sony': 3,
+            'dev-test-tau': 4
+        }
+        
         for filename in os.listdir(self._feat_dir):
             if self._is_eval:
                 if self._modality == 'audio' or (hasattr(self, '_vid_feat_dir') and os.path.exists(
-                        os.path.join(self._vid_feat_dir, filename))):  # some audio files do not have corresponding videos. Ignore them.
+                        os.path.join(self._vid_feat_dir, filename))):
                     self._filenames_list.append(filename)
                     temp_feat = np.load(os.path.join(self._feat_dir, filename))
                     total_frames += (temp_feat.shape[0] - (temp_feat.shape[0] % self._feature_seq_len))
                     if temp_feat.shape[0] > max_frames:
                         max_frames = temp_feat.shape[0]
             else:
-                if int(filename[4]) in self._splits:  # check which split the file belongs to
-                    if self._modality == 'audio' or (hasattr(self, '_vid_feat_dir') and os.path.exists(os.path.join(self._vid_feat_dir, filename))):   # some audio files do not have corresponding videos. Ignore them.
-                        self._filenames_list.append(filename)
-                        temp_feat = np.load(os.path.join(self._feat_dir, filename))
-                        total_frames += (temp_feat.shape[0] - (temp_feat.shape[0] % self._feature_seq_len))
-                        if temp_feat.shape[0]>max_frames:
-                            max_frames = temp_feat.shape[0]
+                # Extract split from new filename format: {format}_{subdir}_{filename}.npy
+                parts = filename.split('_')
+                if len(parts) >= 3:
+                    subdir_part = parts[1]  # e.g., 'dev-test-sony'
+                    split_index = split_mapping.get(subdir_part, -1)
+                    
+                    if split_index in self._splits:  # Use the mapped split index
+                        if self._modality == 'audio' or (hasattr(self, '_vid_feat_dir') and os.path.exists(os.path.join(self._vid_feat_dir, filename))):
+                            self._filenames_list.append(filename)
+                            temp_feat = np.load(os.path.join(self._feat_dir, filename))
+                            total_frames += (temp_feat.shape[0] - (temp_feat.shape[0] % self._feature_seq_len))
+                            if temp_feat.shape[0] > max_frames:
+                                max_frames = temp_feat.shape[0]
 
         if len(temp_feat)!=0:
             self._nb_frames_file = max_frames if self._per_file else temp_feat.shape[0]
