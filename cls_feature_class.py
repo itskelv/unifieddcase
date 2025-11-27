@@ -412,13 +412,19 @@ class FeatureClass:
         
         arg_list = []
 
-        for sub_folder in os.listdir(self._aud_dir):
-            loc_aud_folder = os.path.join(self._aud_dir, sub_folder)
-            for file_cnt, file_name in enumerate(os.listdir(loc_aud_folder)):
-                wav_filename = '{}.wav'.format(file_name.split('.')[0])
-                wav_path = os.path.join(loc_aud_folder, wav_filename)
-                feat_path = os.path.join(self._feat_dir, f"{sub_folder}_{file_name.split('.')[0]}.npy")
-                self.extract_file_feature((file_cnt, wav_path, feat_path))
+        for format_folder in os.listdir(self._aud_dir):  # foa, stereo
+            loc_aud_folder = os.path.join(self._aud_dir, format_folder)
+            
+            # Handle nested subdirectories
+            for sub_dir in os.listdir(loc_aud_folder):
+                sub_dir_path = os.path.join(loc_aud_folder, sub_dir)
+                if os.path.isdir(sub_dir_path):
+                    for file_cnt, file_name in enumerate(os.listdir(sub_dir_path)):
+                        if file_name.endswith('.wav'):
+                            wav_path = os.path.join(sub_dir_path, file_name)
+                            base_name = file_name.split('.')[0]
+                            feat_path = os.path.join(self._feat_dir, f"{format_folder}_{sub_dir}_{base_name}.npy")
+                            self.extract_file_feature((file_cnt, wav_path, feat_path))
                 arg_list.append((file_cnt, wav_path, feat_path))
 #        with Pool() as pool:
 #            result = pool.map(self.extract_file_feature, iterable=arg_list)
@@ -478,19 +484,35 @@ class FeatureClass:
         print('\t\taud_dir {}\n\t\tdesc_dir {}\n\t\tlabel_dir {}'.format(
             self._aud_dir, self._desc_dir, self._label_dir))
         create_folder(self._label_dir)
-        for sub_folder in os.listdir(self._desc_dir):
-            loc_desc_folder = os.path.join(self._desc_dir, sub_folder)
-            for file_cnt, file_name in enumerate(os.listdir(loc_desc_folder)):
-                wav_filename = f"{file_name.split('.')[0]}.wav"
-                nb_label_frames = self._filewise_frames[file_name.split('.')[0]][1]
-                desc_file_polar = self.load_output_format_file(os.path.join(loc_desc_folder, file_name))
-                desc_file = self.convert_output_format_polar_to_cartesian(desc_file_polar)
-                if self._multi_accdoa:
-                    label_mat = self.get_adpit_labels_for_file(desc_file, nb_label_frames)
-                else:
-                    label_mat = self.get_labels_for_file(desc_file, nb_label_frames)
-                print('{}: {}, {}'.format(file_cnt, file_name, label_mat.shape))
-                np.save(os.path.join(self._label_dir, f"{wav_filename.split('.')[0]}.npy"), label_mat)
+        for format_folder in os.listdir(self._desc_dir):  # foa, stereo
+            format_desc_folder = os.path.join(self._desc_dir, format_folder)
+            
+            # Handle nested subdirectories (dev-test-sony, dev-test-tau, etc.)
+            for sub_dir in os.listdir(format_desc_folder):
+                sub_desc_folder = os.path.join(format_desc_folder, sub_dir)
+                if os.path.isdir(sub_desc_folder):
+                    for file_cnt, file_name in enumerate(os.listdir(sub_desc_folder)):
+                        if file_name.endswith('.csv'):  # Assuming metadata files are CSV
+                            file_base_name = file_name.split('.')[0]
+                            wav_filename = f"{file_base_name}.wav"
+                            
+                            # Create the same key used in get_frame_stats
+                            file_key = f"{format_folder}_{sub_dir}_{file_base_name}"
+                            nb_label_frames = self._filewise_frames.get(file_key, [0, 0])[1]
+                            
+                            desc_file_polar = self.load_output_format_file(os.path.join(sub_desc_folder, file_name))
+                            desc_file = self.convert_output_format_polar_to_cartesian(desc_file_polar)
+                            
+                            if self._multi_accdoa:
+                                label_mat = self.get_adpit_labels_for_file(desc_file, nb_label_frames)
+                            else:
+                                label_mat = self.get_labels_for_file(desc_file, nb_label_frames)
+                                
+                            print('{}: {}, {}'.format(file_cnt, file_name, label_mat.shape))
+                                
+                            # Save with unique name that includes format and subdirectory
+                            output_filename = f"{format_folder}_{sub_dir}_{file_base_name}.npy"
+                            np.save(os.path.join(self._label_dir, output_filename), label_mat)
 
     # ------------------------------- EXTRACT VISUAL FEATURES AND PREPROCESS IT -------------------------------
     @staticmethod
